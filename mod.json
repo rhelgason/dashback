@@ -1,0 +1,17 @@
+{
+	"geode": "4.10.0",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "rhelgason.dashback",
+	"name": "dashback",
+	"version": "v1.0.0",
+	"developer": "rhelgason",
+	"description": "Automatically learns and completes Geometry Dash levels using a variety of algorithms.",
+	"dependencies": {
+		"geode.node-ids": ">=v1.20.0"
+	}
+}
