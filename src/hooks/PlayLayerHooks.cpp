@@ -47,6 +47,14 @@ class $modify(DBPlayLayer, PlayLayer) {
         dashback::SolverController::get().onAttemptStart();
     }
 
+    // When solving, we drive resets ourselves (immediately, via the controller)
+    // for fast iteration. Suppress the game's built-in auto-retry so it can't
+    // fire a second, delayed reset that would restart an attempt mid-run.
+    void delayedResetLevel() {
+        if (dashback::SolverController::get().active()) return;
+        PlayLayer::delayedResetLevel();
+    }
+
     void levelComplete() {
         dashback::SolverController::get().onComplete(this);
         PlayLayer::levelComplete();
