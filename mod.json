@@ -13,5 +13,32 @@
 	"description": "Automatically learns and completes Geometry Dash levels using a variety of algorithms.",
 	"dependencies": {
 		"geode.node-ids": ">=v1.20.0"
+	},
+	"settings": {
+		"enabled": {
+			"name": "Enable Solver",
+			"description": "Master switch. When off, dashback does nothing and the game plays normally.",
+			"type": "bool",
+			"default": true
+		},
+		"algorithm": {
+			"name": "Algorithm",
+			"description": "Which solver to run. One of: backtracking, random, genetic.",
+			"type": "string",
+			"default": "backtracking"
+		},
+		"max-attempts": {
+			"name": "Max Attempts",
+			"description": "Give up after this many attempts (0 = unlimited).",
+			"type": "int",
+			"default": 0,
+			"min": 0
+		},
+		"auto-solve-daily": {
+			"name": "Auto-solve Daily (experimental)",
+			"description": "Attempt to automatically open and solve the Daily level. Not yet fully implemented.",
+			"type": "bool",
+			"default": false
+		}
 	}
 }
