@@ -67,3 +67,7 @@ splat64/
 # CLion
 .idea/
 /cmake-build-*/
+
+# ML training data + model outputs (regenerated locally, don't commit)
+ml/data/
+ml/model.txt

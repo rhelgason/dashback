@@ -2,6 +2,7 @@
 
 #include "Algorithm.hpp"
 #include "MetricsRecorder.hpp"
+#include "TrajectoryRecorder.hpp"
 #include "Types.hpp"
 
 #include <chrono>
@@ -53,6 +54,7 @@ private:
 
     std::unique_ptr<Algorithm> m_algo;
     MetricsRecorder m_metrics;
+    TrajectoryRecorder m_trajectory;
     LevelInfo m_level;
     std::string m_algoId;
 
@@ -67,6 +69,7 @@ private:
     int m_attempt = 0;
     int m_frame = 0;
     int m_maxAttempts = 0;
+    int m_bestFrameEver = -1;      // furthest death frame this level (for trajectory "new best")
     float m_bestProgress = 0.f;
     float m_bestEver = 0.f;
     bool m_lastHold = false;

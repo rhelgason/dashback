@@ -3,6 +3,7 @@
 #include "AlgorithmRegistry.hpp"
 #include "SolutionStore.hpp"
 #include "Perception.hpp"
+#include "Observation.hpp"
 #include "../algorithms/Builtins.hpp"
 #include "../algorithms/ReplayAlgorithm.hpp"
 
@@ -119,10 +120,13 @@ void SolverController::onLevelStart(PlayLayer* pl) {
                       std::chrono::system_clock::now().time_since_epoch())
                       .count();
     m_metrics.begin(m_level, m_algo->name(), m_sessionId);
+    m_trajectory.setEnabled(Mod::get()->getSettingValue<bool>("record-trajectories"));
+    m_trajectory.begin(m_level, m_algo->name(), m_sessionId);
 
     m_active = true;
     m_attempt = 0;
     m_bestEver = 0.f;
+    m_bestFrameEver = -1;
     m_algo->onLevelStart(m_level);
     applySpeed();
     beginAttempt();
@@ -195,6 +199,11 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
         m_lastHold = in.hold;
     }
 
+    if (m_trajectory.enabled()) {
+        auto obs = observe(gl, player, Observation::kLookahead, Observation::kBandHeight);
+        m_trajectory.record(obs.toFeatures(), in.hold);
+    }
+
     ++m_frame;
 }
 
@@ -219,6 +228,10 @@ void SolverController::onDeath(PlayLayer* pl) {
     r.wallMs = elapsedMs(m_attemptStart);
     m_metrics.record(r);
     m_algo->onDeath(DeathInfo{m_frame, m_bestProgress});
+
+    bool newBest = m_frame > m_bestFrameEver;
+    if (newBest) m_bestFrameEver = m_frame;
+    m_trajectory.endAttempt(false, newBest, m_frame);
 
     log::info("dashback: attempt {} died at frame {} ({:.1f}%, best ever {:.1f}%) [{:.0f}ms]",
         m_attempt, m_frame, m_bestProgress * 100.f, m_bestEver * 100.f, r.wallMs);
@@ -254,6 +267,7 @@ void SolverController::onComplete(PlayLayer* pl) {
     r.wallMs = elapsedMs(m_attemptStart);
     m_metrics.record(r);
     m_algo->onComplete(r);
+    m_trajectory.endAttempt(true, true, m_frame);
 
     m_solved = true;
     m_active = false;

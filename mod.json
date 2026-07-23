@@ -96,6 +96,12 @@
 			"type": "bool",
 			"default": false
 		},
+		"record-trajectories": {
+			"name": "Record Training Data",
+			"description": "Log per-frame (observation, action) trajectories for solved and new-best runs to <save>/trajectories/, as training data for the learned policy. Off by default; adds per-frame sensing cost when on.",
+			"type": "bool",
+			"default": false
+		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",
 			"description": "Attempt to automatically open and solve the Daily level. Not yet fully implemented.",
