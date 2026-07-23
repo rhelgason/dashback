@@ -10,7 +10,6 @@
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/PlayerObject.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
-#include <Geode/binding/CheckpointObject.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -30,16 +29,6 @@ static double elapsedMs(std::chrono::steady_clock::time_point start) {
         .count();
 }
 
-void SolverController::clearCheckpoint() {
-    // createCheckpoint() returns an autoreleased object, so we retain our own
-    // reference (see onStep); release it when we drop it.
-    if (m_checkpoint) {
-        m_checkpoint->release();
-        m_checkpoint = nullptr;
-    }
-    m_checkpointFrame = -1;
-}
-
 void SolverController::applySpeed() {
     if (auto* sched = CCDirector::sharedDirector()->getScheduler()) {
         sched->setTimeScale(m_speed);
@@ -48,7 +37,7 @@ void SolverController::applySpeed() {
 
 void SolverController::adjustSpeed(float delta) {
     if (!m_playLayer) return;
-    m_speed = std::clamp(m_speed + delta, 0.5f, 12.f);
+    m_speed = std::clamp(m_speed + delta, 0.5f, 20.f);
     applySpeed();
     log::info("dashback: speed {:.1f}x", m_speed);
 }
@@ -58,8 +47,6 @@ void SolverController::onLevelStart(PlayLayer* pl) {
     m_active = false;
     m_solved = false;
     m_algo.reset();
-    m_checkpoint = nullptr;
-    m_checkpointFrame = -1;
 
     if (!pl || !pl->m_level) return;
     if (!Mod::get()->getSettingValue<bool>("enabled")) {
@@ -80,21 +67,18 @@ void SolverController::onLevelStart(PlayLayer* pl) {
     m_level.length = pl->m_levelLength;
     m_maxAttempts = static_cast<int>(Mod::get()->getSettingValue<int64_t>("max-attempts"));
 
-    // If we already solved this level with this algorithm, replay it end-to-end.
     if (auto saved = SolutionStore::load(m_algoId, m_level.levelID)) {
         m_mode = Mode::Replay;
         m_algo = std::make_unique<ReplayAlgorithm>(std::move(*saved));
-        m_fastRestart = false;
         m_speed = 1.f; // watchable
         log::info("dashback: replaying saved solution for '{}' (id {})",
             m_level.name, m_level.levelID);
     } else {
         m_mode = Mode::Search;
         m_algo = AlgorithmRegistry::get().create(m_algoId);
-        m_fastRestart = Mod::get()->getSettingValue<bool>("fast-restart");
         m_speed = static_cast<float>(Mod::get()->getSettingValue<double>("solve-speed"));
-        log::info("dashback: solving '{}' (id {}) with '{}' at {}x (fast-restart {})",
-            m_level.name, m_level.levelID, m_algoId, m_speed, m_fastRestart);
+        log::info("dashback: solving '{}' (id {}) with '{}' at {}x",
+            m_level.name, m_level.levelID, m_algoId, m_speed);
     }
     if (!m_algo) {
         log::error("dashback: failed to create algorithm '{}'", m_algoId);
@@ -111,24 +95,21 @@ void SolverController::onLevelStart(PlayLayer* pl) {
     m_bestEver = 0.f;
     m_algo->onLevelStart(m_level);
     applySpeed();
-    beginAttempt(0);
+    beginAttempt();
 }
 
 void SolverController::startSearch() {
-    // Drop into a fresh search (e.g. after a stored solution turned out invalid).
     m_mode = Mode::Search;
     m_algo = AlgorithmRegistry::get().create(m_algoId);
-    m_fastRestart = Mod::get()->getSettingValue<bool>("fast-restart");
     m_speed = static_cast<float>(Mod::get()->getSettingValue<double>("solve-speed"));
-    clearCheckpoint();
     m_attempt = 0;
     m_bestEver = 0.f;
     if (m_algo) m_algo->onLevelStart(m_level);
     applySpeed();
 }
 
-void SolverController::beginAttempt(int startFrame) {
-    m_frame = startFrame;
+void SolverController::beginAttempt() {
+    m_frame = 0;
     m_bestProgress = 0.f;
     m_lastHold = false;
     m_deadThisAttempt = false;
@@ -140,11 +121,8 @@ void SolverController::beginAttempt(int startFrame) {
 
 void SolverController::onAttemptStart() {
     if (!m_active || !m_algo) return;
-    // A checkpoint restore drives its own frame bookkeeping; ignore the
-    // resetLevel hook it may or may not trigger.
-    if (m_awaitingCheckpointStart) return;
     if (m_awaitingFirstStep) return; // debounce duplicate resetLevel() calls
-    beginAttempt(0);
+    beginAttempt();
 }
 
 void SolverController::onStep(GJBaseGameLayer* gl) {
@@ -155,21 +133,6 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
     if (!player || player->m_isDead) return;
 
     m_awaitingFirstStep = false;
-
-    // Snapshot state at the algorithm's frontier so future deaths can restart
-    // there instead of from frame 0.
-    if (m_fastRestart && m_mode == Mode::Search) {
-        int want = m_algo->frontierFrame();
-        if (want > 0 && m_frame == want &&
-            (m_checkpoint == nullptr || m_checkpointFrame != want)) {
-            if (auto* cp = m_playLayer->createCheckpoint()) {
-                cp->retain();          // createCheckpoint returns an autoreleased object
-                if (m_checkpoint) m_checkpoint->release();
-                m_checkpoint = cp;
-                m_checkpointFrame = want;
-            }
-        }
-    }
 
     StepContext ctx;
     ctx.frame = m_frame;
@@ -197,31 +160,10 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
     ++m_frame;
 }
 
-void SolverController::scheduleRestart() {
-    // Prefer a checkpoint restore when the next attempt won't change anything
-    // before the checkpoint frame; otherwise fall back to a full reset.
-    bool useCheckpoint = m_fastRestart && m_mode == Mode::Search &&
-        m_checkpoint != nullptr && m_checkpointFrame >= 0 &&
-        m_algo->nextChangeFrame() >= m_checkpointFrame;
-
-    if (useCheckpoint) {
-        int cpFrame = m_checkpointFrame;
-        auto* cp = m_checkpoint;
-        m_awaitingCheckpointStart = true;
-        queueInMainThread([this, cp, cpFrame] {
-            if (!m_active || !m_playLayer) { m_awaitingCheckpointStart = false; return; }
-            m_playLayer->loadFromCheckpoint(cp);
-            // Ensure the jump button starts released after a restore.
-            static_cast<GJBaseGameLayer*>(m_playLayer)
-                ->handleButton(false, static_cast<int>(PlayerButton::Jump), true);
-            m_awaitingCheckpointStart = false;
-            beginAttempt(cpFrame);
-        });
-    } else {
-        queueInMainThread([this] {
-            if (m_active && m_playLayer) m_playLayer->resetLevel();
-        });
-    }
+void SolverController::scheduleReset() {
+    queueInMainThread([this] {
+        if (m_active && m_playLayer) m_playLayer->resetLevel();
+    });
 }
 
 void SolverController::onDeath(PlayLayer* pl) {
@@ -244,14 +186,11 @@ void SolverController::onDeath(PlayLayer* pl) {
         m_attempt, m_frame, m_bestProgress * 100.f, m_bestEver * 100.f, r.wallMs);
 
     if (m_mode == Mode::Replay) {
-        // The stored solution failed to complete — discard it and re-search.
         log::warn("dashback: saved solution for '{}' is invalid, discarding and re-searching",
             m_level.name);
         SolutionStore::remove(m_algoId, m_level.levelID);
         startSearch();
-        queueInMainThread([this] {
-            if (m_active && m_playLayer) m_playLayer->resetLevel();
-        });
+        scheduleReset();
         return;
     }
 
@@ -261,7 +200,7 @@ void SolverController::onDeath(PlayLayer* pl) {
         return;
     }
 
-    scheduleRestart();
+    scheduleReset();
 }
 
 void SolverController::onComplete(PlayLayer* pl) {
@@ -284,8 +223,6 @@ void SolverController::onComplete(PlayLayer* pl) {
     m_bestEver = 1.0f;
 
     if (m_mode == Mode::Search) {
-        // Persist the winning input sequence; reopening the level will replay it
-        // end-to-end (which also validates it).
         auto seq = m_algo->solution();
         if (!seq.empty()) {
             SolutionStore::save(m_algoId, m_level.levelID, seq);
@@ -306,7 +243,6 @@ void SolverController::onLevelEnd() {
     m_active = false;
     m_playLayer = nullptr;
     m_algo.reset();
-    clearCheckpoint();
 
     if (auto* sched = CCDirector::sharedDirector()->getScheduler()) {
         sched->setTimeScale(1.0f);

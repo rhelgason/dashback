@@ -10,16 +10,14 @@
 
 class PlayLayer;
 class GJBaseGameLayer;
-class CheckpointObject;
 
 namespace dashback {
 
 // The orchestrator. Owns the current algorithm + metrics and is driven by the
 // game hooks. It runs in one of two modes:
 //
-//   Search  — run the selected algorithm to find an input sequence. Optionally
-//             uses GD checkpoints to restart near the frontier instead of from
-//             frame 0 (fast-restart). On completion the full sequence is saved.
+//   Search  — run the selected algorithm to find an input sequence (full resets
+//             between attempts). On completion the full sequence is saved.
 //   Replay  — a level with a saved solution plays that sequence from frame 0 at
 //             watchable speed: a genuine end-to-end run. If it fails to complete,
 //             the stored solution is discarded and the controller re-searches.
@@ -47,10 +45,9 @@ private:
 
     SolverController() = default;
 
-    void beginAttempt(int startFrame);
-    void scheduleRestart();       // search mode: checkpoint restore or full reset
-    void startSearch();           // (re)initialize a from-scratch search
-    void clearCheckpoint();       // release our retained checkpoint, if any
+    void beginAttempt();
+    void scheduleReset();  // queue a full level reset for the next attempt
+    void startSearch();    // (re)initialize a from-scratch search
     void applySpeed();
     bool reachedAttemptLimit() const;
 
@@ -64,10 +61,8 @@ private:
     Mode m_mode = Mode::Search;
     bool m_active = false;
     bool m_awaitingFirstStep = false;
-    bool m_awaitingCheckpointStart = false; // ignore the resetLevel hook during a checkpoint restore
     bool m_deadThisAttempt = false;
     bool m_solved = false;
-    bool m_fastRestart = false;
 
     int m_attempt = 0;
     int m_frame = 0;
@@ -75,10 +70,6 @@ private:
     float m_bestProgress = 0.f;
     float m_bestEver = 0.f;
     bool m_lastHold = false;
-
-    // Checkpoint state (search + fast-restart).
-    CheckpointObject* m_checkpoint = nullptr;
-    int m_checkpointFrame = -1;
 
     float m_speed = 1.f;
     long long m_sessionId = 0;

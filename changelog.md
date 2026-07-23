@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6
+- Remove checkpoint fast-restart. GD's loadFromCheckpoint is a practice-mode
+  facility; used standalone it either failed to restore (replayed from frame 0)
+  or left the game hung with no respawn. Solving now always uses reliable full
+  resets — kept fast by Solve Speed.
+- Solve Speed default 6x, max raised to 20x; adjust live with [ and ].
+
 ## 1.0.5
 - Fix checkpoint crash: `createCheckpoint()` returns an autoreleased object; we
   now retain our reference (and release it) so `loadFromCheckpoint` can't

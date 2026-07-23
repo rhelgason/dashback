@@ -36,11 +36,11 @@
 		},
 		"solve-speed": {
 			"name": "Solve Speed",
-			"description": "Game speed multiplier while solving. Physics is fixed-step, so this only makes iteration faster without affecting determinism. Reset to 1 when you leave the level.",
+			"description": "Game speed multiplier while solving. Physics is fixed-step, so this only makes iteration faster without affecting determinism. Adjust live in-game with [ and ]. Reset to 1 when you leave the level.",
 			"type": "float",
-			"default": 4.0,
+			"default": 6.0,
 			"min": 1.0,
-			"max": 12.0
+			"max": 20.0
 		},
 		"search-granularity": {
 			"name": "Search Granularity",
@@ -49,12 +49,6 @@
 			"default": 1,
 			"min": 1,
 			"max": 8
-		},
-		"fast-restart": {
-			"name": "Fast Restart (checkpoints)",
-			"description": "Experimental: restart from a saved checkpoint near the current frontier instead of from the level start, so each attempt only replays the segment to the next obstacle. Big speedup deep in a level, but relies on GD's checkpoint system — leave OFF unless you want to test it. OFF = reliable full resets (still fast via Solve Speed).",
-			"type": "bool",
-			"default": false
 		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",
