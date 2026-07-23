@@ -6,6 +6,7 @@
 #include "HillClimbingAlgorithm.hpp"
 #include "PolicyAlgorithm.hpp"
 #include "RandomSearchAlgorithm.hpp"
+#include "WarmStartGeneticAlgorithm.hpp"
 
 #include <memory>
 
@@ -23,6 +24,7 @@ void registerBuiltinAlgorithms() {
     registry.reg("hillclimb", [] { return std::make_unique<HillClimbingAlgorithm>(false); });
     registry.reg("annealing", [] { return std::make_unique<HillClimbingAlgorithm>(true); });
     registry.reg("policy", [] { return std::make_unique<PolicyAlgorithm>(); });
+    registry.reg("genetic-warm", [] { return std::make_unique<WarmStartGeneticAlgorithm>(); });
 }
 
 } // namespace dashback

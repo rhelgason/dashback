@@ -23,7 +23,7 @@
 		},
 		"algorithm": {
 			"name": "Algorithm",
-			"description": "Which solver to run: backtracking, genetic, hillclimb, annealing, or random.",
+			"description": "Which solver to run: backtracking, genetic, genetic-warm (policy-seeded genetic), hillclimb, annealing, policy, or random.",
 			"type": "string",
 			"default": "backtracking"
 		},

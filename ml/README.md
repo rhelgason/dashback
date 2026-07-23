@@ -37,8 +37,11 @@ Label column: `action` (1 = hold that frame). Extra columns (`solved`, `session`
 - Everything here is **gated on perception being correct** — validate it in-game
   with the **Show Obstacle Sensing** HUD toggle before trusting a trained model.
 - The realistic near-term target is **ML-as-a-prior**: use the policy to
-  warm-start the genetic search (far fewer attempts), not to solve outright. The
-  standalone `policy` algorithm is the first step toward that.
+  warm-start the genetic search (far fewer attempts), not to solve outright.
+  This is implemented as the **`genetic-warm`** algorithm — it runs the policy
+  once to produce a seed input sequence, then evolves the genetic population from
+  that seed. With no model it degrades to plain genetic. The standalone `policy`
+  algorithm is the pure reactive version.
 
 ## Weight file format (`model.txt`)
 

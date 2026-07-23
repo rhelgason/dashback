@@ -24,6 +24,22 @@ void GeneticAlgorithm::onLevelStart(const LevelInfo& /*level*/) {
     m_generation = 0;
 }
 
+void GeneticAlgorithm::seedWith(const seq::Genome& seed) {
+    m_pop.assign(m_popSize, seed);
+    for (int i = 1; i < m_popSize; ++i) {
+        int center = seed.empty()
+            ? 0
+            : std::uniform_int_distribution<int>(0, static_cast<int>(seed.size()) - 1)(m_rng);
+        seq::mutateAround(m_pop[i], center, m_mutationWindow, m_mutationRate, m_holdProb, m_rng);
+    }
+    m_fitness.assign(m_popSize, 0);
+    m_current = 0;
+    m_generation = 0;
+    m_best = seed;
+    m_bestFit = -1;
+    geode::log::info("dashback[genetic]: seeded population from a {}-frame run", seed.size());
+}
+
 InputState GeneticAlgorithm::decide(const StepContext& ctx) {
     auto& g = m_pop[m_current];
     int f = ctx.frame;

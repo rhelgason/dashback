@@ -26,6 +26,10 @@ public:
 
     std::vector<bool> solution() const override { return m_best; }
 
+    // Seed the initial population from a given sequence (e.g. a policy's run):
+    // genome 0 is the seed, the rest are mutations of it. Call after onLevelStart.
+    void seedWith(const seq::Genome& seed);
+
 private:
     void evolve();
     const seq::Genome& tournament();

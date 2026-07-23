@@ -27,6 +27,10 @@ public:
     bool wantsAnotherAttempt() const override { return !m_done; }
     std::vector<bool> solution() const override { return m_played; }
 
+    // Whether a usable model is loaded (used by the warm-start hook to decide
+    // whether seeding is worthwhile).
+    bool ready() const { return m_loaded; }
+
 private:
     bool loadModel();
     float forward(const std::vector<float>& x) const;
