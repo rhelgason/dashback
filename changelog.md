@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.5
+- Fix checkpoint crash: `createCheckpoint()` returns an autoreleased object; we
+  now retain our reference (and release it) so `loadFromCheckpoint` can't
+  dereference freed memory. Fixes the access violation in loadFromCheckpoint.
+- Fast Restart now defaults OFF (opt-in). With it off, solving uses reliable full
+  resets — still fast via Solve Speed. Turn it on to test the checkpoint path.
+
 ## 1.0.4
 - Checkpoint fast-restart (setting "Fast Restart", default on): during search,
   snapshot state at the committed frontier and restart there instead of from

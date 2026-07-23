@@ -10,6 +10,7 @@
 #include <Geode/binding/GJBaseGameLayer.hpp>
 #include <Geode/binding/PlayerObject.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
+#include <Geode/binding/CheckpointObject.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -27,6 +28,16 @@ static double elapsedMs(std::chrono::steady_clock::time_point start) {
     return std::chrono::duration<double, std::milli>(
                std::chrono::steady_clock::now() - start)
         .count();
+}
+
+void SolverController::clearCheckpoint() {
+    // createCheckpoint() returns an autoreleased object, so we retain our own
+    // reference (see onStep); release it when we drop it.
+    if (m_checkpoint) {
+        m_checkpoint->release();
+        m_checkpoint = nullptr;
+    }
+    m_checkpointFrame = -1;
 }
 
 void SolverController::applySpeed() {
@@ -109,8 +120,7 @@ void SolverController::startSearch() {
     m_algo = AlgorithmRegistry::get().create(m_algoId);
     m_fastRestart = Mod::get()->getSettingValue<bool>("fast-restart");
     m_speed = static_cast<float>(Mod::get()->getSettingValue<double>("solve-speed"));
-    m_checkpoint = nullptr;
-    m_checkpointFrame = -1;
+    clearCheckpoint();
     m_attempt = 0;
     m_bestEver = 0.f;
     if (m_algo) m_algo->onLevelStart(m_level);
@@ -152,8 +162,12 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
         int want = m_algo->frontierFrame();
         if (want > 0 && m_frame == want &&
             (m_checkpoint == nullptr || m_checkpointFrame != want)) {
-            m_checkpoint = m_playLayer->createCheckpoint();
-            m_checkpointFrame = want;
+            if (auto* cp = m_playLayer->createCheckpoint()) {
+                cp->retain();          // createCheckpoint returns an autoreleased object
+                if (m_checkpoint) m_checkpoint->release();
+                m_checkpoint = cp;
+                m_checkpointFrame = want;
+            }
         }
     }
 
@@ -292,8 +306,7 @@ void SolverController::onLevelEnd() {
     m_active = false;
     m_playLayer = nullptr;
     m_algo.reset();
-    m_checkpoint = nullptr;
-    m_checkpointFrame = -1;
+    clearCheckpoint();
 
     if (auto* sched = CCDirector::sharedDirector()->getScheduler()) {
         sched->setTimeScale(1.0f);

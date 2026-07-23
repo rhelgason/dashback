@@ -50,6 +50,7 @@ private:
     void beginAttempt(int startFrame);
     void scheduleRestart();       // search mode: checkpoint restore or full reset
     void startSearch();           // (re)initialize a from-scratch search
+    void clearCheckpoint();       // release our retained checkpoint, if any
     void applySpeed();
     bool reachedAttemptLimit() const;
 

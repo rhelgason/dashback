@@ -52,9 +52,9 @@
 		},
 		"fast-restart": {
 			"name": "Fast Restart (checkpoints)",
-			"description": "Experimental: restart from a saved checkpoint near the current frontier instead of from the level start, so each attempt only replays the segment to the next obstacle. Huge speedup deep in a level. Turn off if solving behaves oddly.",
+			"description": "Experimental: restart from a saved checkpoint near the current frontier instead of from the level start, so each attempt only replays the segment to the next obstacle. Big speedup deep in a level, but relies on GD's checkpoint system — leave OFF unless you want to test it. OFF = reliable full resets (still fast via Solve Speed).",
 			"type": "bool",
-			"default": true
+			"default": false
 		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",
