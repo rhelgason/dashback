@@ -69,6 +69,7 @@ void SolverController::onLevelStart(PlayLayer* pl) {
 
     m_active = true;
     m_attempt = 0;
+    m_bestEver = 0.f;
     m_algo->onLevelStart(m_level);
 
     log::info("dashback: solving '{}' (id {}) with '{}' — metrics -> {}",
@@ -121,6 +122,7 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
         : 0.f;
 
     if (ctx.progress > m_bestProgress) m_bestProgress = ctx.progress;
+    if (ctx.progress > m_bestEver) m_bestEver = ctx.progress;
 
     // Apply input through the game's own handler so it enters exactly as a real
     // press would. Only on transitions, mirroring real hold/release input.
@@ -153,8 +155,8 @@ void SolverController::onDeath(PlayLayer* pl) {
     info.progress = m_bestProgress;
     m_algo->onDeath(info);
 
-    log::info("dashback: attempt {} died at frame {} ({:.1f}%) [{:.0f}ms]",
-        m_attempt, m_frame, m_bestProgress * 100.f, r.wallMs);
+    log::info("dashback: attempt {} died at frame {} ({:.1f}%, best ever {:.1f}%) [{:.0f}ms]",
+        m_attempt, m_frame, m_bestProgress * 100.f, m_bestEver * 100.f, r.wallMs);
 
     if (reachedAttemptLimit() || !m_algo->wantsAnotherAttempt()) {
         log::info("dashback: stopping after {} attempts", m_attempt);
@@ -186,6 +188,7 @@ void SolverController::onComplete(PlayLayer* pl) {
     m_solved = true;
     m_active = false;
     m_bestProgress = 1.0f;
+    m_bestEver = 1.0f;
 
     log::info("dashback: SOLVED '{}' on attempt {} with '{}' [{:.0f}ms]",
         m_level.name, m_attempt, m_algo->name(), r.wallMs);
@@ -207,8 +210,9 @@ bool SolverController::reachedAttemptLimit() const {
 std::string SolverController::hudText() const {
     if (!m_active && !m_solved) return "";
     std::string status = m_solved ? "\nSOLVED" : (m_active ? "" : "\nSTOPPED");
-    return fmt::format("dashback [{}]\nAttempt: {}\nBest: {:.1f}%{}",
-        m_algo ? m_algo->name() : "-", m_attempt, m_bestProgress * 100.f, status);
+    return fmt::format("dashback [{}]\nAttempt: {}\nNow: {:.1f}%  Best: {:.1f}%{}",
+        m_algo ? m_algo->name() : "-", m_attempt,
+        m_bestProgress * 100.f, m_bestEver * 100.f, status);
 }
 
 } // namespace dashback

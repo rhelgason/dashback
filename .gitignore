@@ -46,6 +46,7 @@ build-*/
 
 # Geode cross-compilation toolchain caches (regenerable, never commit)
 splat/
+splat64/
 .xwin-cache/
 
 # Workspace files are user-specific

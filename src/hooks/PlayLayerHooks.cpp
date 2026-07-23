@@ -39,7 +39,12 @@ class $modify(DBPlayLayer, PlayLayer) {
 
     void destroyPlayer(PlayerObject* player, GameObject* object) {
         PlayLayer::destroyPlayer(player, object);
-        dashback::SolverController::get().onDeath(this);
+        // GD calls destroyPlayer during the pre-start intro and for non-lethal
+        // contacts where it early-returns WITHOUT killing (m_isDead stays false).
+        // Only count a real death — one where the player actually died.
+        if (player == m_player1 && player->m_isDead) {
+            dashback::SolverController::get().onDeath(this);
+        }
     }
 
     void resetLevel() {

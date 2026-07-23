@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2
+- Fix death detection: GD calls `destroyPlayer` during the pre-start intro and
+  for non-lethal contacts where it early-returns without killing. Only count a
+  death when the player's `m_isDead` actually becomes true — the solver no longer
+  "dies" during the intro and gives up.
+- Rework the backtracking algorithm to commit progress (greedy jump-insertion)
+  instead of brute-forcing the pattern right before the death point; it now makes
+  visible, monotonic progress.
+- HUD shows all-time best progress (not just the current attempt's).
+
 ## 1.0.1
 - Port to Geode 5.8.2 / Geometry Dash 2.2081. `GJBaseGameLayer::processCommands`
   gained `isHalfTick`/`isLastTick` parameters in 2.2081; the hook now matches and

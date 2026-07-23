@@ -65,6 +65,7 @@ private:
     int m_frame = 0;               // deterministic physics-step index
     int m_maxAttempts = 0;         // 0 = unlimited
     float m_bestProgress = 0.f;    // best progress this attempt (0..1)
+    float m_bestEver = 0.f;        // best progress across all attempts this level
     bool m_lastHold = false;       // last applied jump state (edge detection)
 
     long long m_sessionId = 0;

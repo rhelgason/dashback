@@ -6,25 +6,32 @@
 
 namespace dashback {
 
-// A deterministic re-implementation of the original prototype. It maintains a
-// per-frame plan of jump holds; on each death it flips the latest "no-hold"
-// frame before the death point to a hold and discards everything after,
-// systematically pushing a jump earlier through the sequence.
+// Greedy jump-insertion search (a practical take on backtracking).
 //
-// This is a naive brute-force search kept as a baseline — it only really works
-// on trivial levels — but it is now frame-deterministic, so it no longer suffers
-// the replay desync of the original.
+// The prototype flipped the latest non-jump frame and discarded everything after
+// it, so it only ever brute-forced the jump pattern right before the death point
+// and never kept progress. This version instead *commits* progress:
+//
+//   * Play the committed jump sequence plus one trial jump at `m_probe`.
+//   * If that trial pushes the death point further than ever before, commit the
+//     jump and start probing just before the NEW death point.
+//   * Otherwise move the probe one frame earlier and try again.
+//
+// So each obstacle is cleared by finding a single well-timed jump, locking it in,
+// and moving on — which makes visible, monotonic progress. It's still naive (one
+// jump at a time, greedy, no un-committing a bad jump), but it actually advances.
 class BacktrackingAlgorithm : public Algorithm {
 public:
     std::string name() const override { return "backtracking"; }
 
-    void onAttemptStart(int attempt) override;
     InputState decide(const StepContext& ctx) override;
     void onDeath(const DeathInfo& info) override;
     bool wantsAnotherAttempt() const override { return !m_exhausted; }
 
 private:
-    std::vector<bool> m_holds; // planned jump-hold state per frame
+    std::vector<bool> m_committed; // locked-in jumps, indexed by frame
+    int m_bestDeath = 0;           // furthest frame reached with committed jumps
+    int m_probe = -1;              // frame we're trying an extra jump at (-1 = not yet started)
     bool m_exhausted = false;
 };
 
