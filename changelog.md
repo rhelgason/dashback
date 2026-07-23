@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+- Port to Geode 5.8.2 / Geometry Dash 2.2081. `GJBaseGameLayer::processCommands`
+  gained `isHalfTick`/`isLastTick` parameters in 2.2081; the hook now matches and
+  passes them through (still counting every invocation as a deterministic step).
+
 ## 1.0.0
 - Deterministic input/replay foundation: hook `GJBaseGameLayer::processCommands`
   (per physics step) instead of counting rendered frames, and apply input via the
