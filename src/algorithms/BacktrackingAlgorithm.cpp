@@ -1,6 +1,15 @@
 #include "BacktrackingAlgorithm.hpp"
 
+#include <Geode/Geode.hpp>
+
+#include <algorithm>
+
 namespace dashback {
+
+void BacktrackingAlgorithm::onLevelStart(const LevelInfo& /*level*/) {
+    m_granularity = std::max(1, static_cast<int>(
+        geode::Mod::get()->getSettingValue<int64_t>("search-granularity")));
+}
 
 InputState BacktrackingAlgorithm::decide(const StepContext& ctx) {
     int f = ctx.frame;
@@ -30,8 +39,9 @@ void BacktrackingAlgorithm::onDeath(const DeathInfo& info) {
         m_bestDeath = death;
         m_probe = death - 1; // now probe near the new death point
     } else {
-        // Trial jump didn't help; try inserting a jump one frame earlier.
-        --m_probe;
+        // Trial jump didn't help; try inserting a jump earlier (step by the
+        // configured granularity).
+        m_probe -= m_granularity;
     }
 
     if (m_probe < 0) m_exhausted = true; // ran out of frames to probe

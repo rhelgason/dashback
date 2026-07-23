@@ -72,8 +72,15 @@ void SolverController::onLevelStart(PlayLayer* pl) {
     m_bestEver = 0.f;
     m_algo->onLevelStart(m_level);
 
-    log::info("dashback: solving '{}' (id {}) with '{}' — metrics -> {}",
-        m_level.name, m_level.levelID, m_algo->name(), m_metrics.filePath());
+    // Speed the game up for faster iteration. Physics is fixed-step, so this
+    // changes wall-clock only, not the deterministic step sequence.
+    float speed = static_cast<float>(Mod::get()->getSettingValue<double>("solve-speed"));
+    if (auto* sched = CCDirector::sharedDirector()->getScheduler()) {
+        sched->setTimeScale(speed);
+    }
+
+    log::info("dashback: solving '{}' (id {}) with '{}' at {}x — metrics -> {}",
+        m_level.name, m_level.levelID, m_algo->name(), speed, m_metrics.filePath());
 
     beginAttempt();
 }
@@ -201,6 +208,11 @@ void SolverController::onLevelEnd() {
     m_active = false;
     m_playLayer = nullptr;
     m_algo.reset();
+
+    // Restore normal game speed when leaving the level.
+    if (auto* sched = CCDirector::sharedDirector()->getScheduler()) {
+        sched->setTimeScale(1.0f);
+    }
 }
 
 bool SolverController::reachedAttemptLimit() const {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3
+- Add "Solve Speed" setting (default 4x): speeds up iteration via the scheduler
+  time scale. Physics is fixed-step so this doesn't affect determinism. Reset to
+  1x on leaving the level.
+- Add "Search Granularity" setting (default 1 = every frame): how many frames the
+  backtracking probe steps at a time. Higher scans faster but can miss
+  frame-perfect jumps.
+
 ## 1.0.2
 - Fix death detection: GD calls `destroyPlayer` during the pre-start intro and
   for non-lethal contacts where it early-returns without killing. Only count a

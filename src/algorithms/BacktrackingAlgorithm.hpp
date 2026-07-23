@@ -24,6 +24,7 @@ class BacktrackingAlgorithm : public Algorithm {
 public:
     std::string name() const override { return "backtracking"; }
 
+    void onLevelStart(const LevelInfo& level) override;
     InputState decide(const StepContext& ctx) override;
     void onDeath(const DeathInfo& info) override;
     bool wantsAnotherAttempt() const override { return !m_exhausted; }
@@ -32,6 +33,7 @@ private:
     std::vector<bool> m_committed; // locked-in jumps, indexed by frame
     int m_bestDeath = 0;           // furthest frame reached with committed jumps
     int m_probe = -1;              // frame we're trying an extra jump at (-1 = not yet started)
+    int m_granularity = 1;         // frames the probe steps per attempt (search-granularity setting)
     bool m_exhausted = false;
 };
 
