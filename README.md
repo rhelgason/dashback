@@ -41,23 +41,35 @@ press would. This is the fix for the flakiness that plagued the prototype.
 ```
 src/
   core/
-    Types.hpp            StepContext / DeathInfo / AttemptResult / InputState
+    Types.hpp            StepContext (incl. GameMode) / DeathInfo / AttemptResult / InputState
     Algorithm.hpp        the interface every solver implements
     AlgorithmRegistry.*  name -> factory, so algorithms are selected by string
     SolverController.*    orchestrator; owns the algorithm + metrics, driven by hooks
     MetricsRecorder.*     appends one CSV row per attempt
+    SolutionStore.*      saves/loads completed input sequences for E2E replay
+    Perception.*         on-demand obstacle sensing (damaging/static objects ahead)
   hooks/
     GJBaseGameLayerHooks.cpp  processCommands  -> deterministic step + input
     PlayLayerHooks.cpp        init/destroyPlayer/resetLevel/levelComplete/onExit + HUD
     MenuLayerHooks.cpp        entry point for the daily runner
+    KeybindHooks.cpp          [ / ] live speed control
   algorithms/
-    BacktrackingAlgorithm.*   deterministic version of the original prototype
+    SequenceSearch.hpp        shared hold-sequence helpers (mutate/crossover)
+    BacktrackingAlgorithm.*   DFS backtracking over variable-length hold intervals
+    GeneticAlgorithm.*        evolutionary solver (tournament + crossover + mutation)
+    HillClimbingAlgorithm.*   (1+1) local search; annealing = same class, temp > 0
     RandomSearchAlgorithm.*   pure-random baseline
-    GeneticAlgorithm.*        evolutionary solver (elitism + tournament + crossover)
+    ReplayAlgorithm.hpp       plays back a stored solution end-to-end
     Builtins.cpp              registers the built-ins
   daily/
     DailyRunner.*             daily auto-solve scaffold
 ```
+
+Algorithms (Algorithm setting): `backtracking`, `genetic`, `hillclimb`, `annealing`, `random`.
+All share one mode-agnostic representation — a per-frame hold bit — which is
+correct for every game mode (cube/ship/ball/UFO/wave/robot/spider/swing); the
+mode is only used for awareness. Perception is a foundation for future
+reactive/RL algorithms and is not consumed by the search algorithms above.
 
 The controller lifecycle, driven entirely by game hooks:
 

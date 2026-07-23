@@ -10,9 +10,21 @@ class GJBaseGameLayer;
 
 namespace dashback {
 
-// The decision an algorithm makes for a single physics step. Classic mode only
-// needs the jump button, so this is intentionally minimal; add fields here (e.g.
-// left/right for platformer mode) as algorithms grow to need them.
+// The player's current gameplay mode. The per-frame hold bit means the same to
+// every algorithm, but GD interprets it differently per mode, so exposing the
+// mode lets algorithms bias their search:
+//   Cube   — tap to jump (edge-triggered, from ground); hold = auto-jump on land
+//   Ship   — hold = thrust up, release = fall (continuous)
+//   Ball   — tap to flip gravity (edge-triggered)
+//   UFO    — tap for an upward impulse each press (edge-triggered, mid-air)
+//   Wave   — hold = up 45 deg, release = down 45 deg (continuous, twitchy)
+//   Robot  — hold length sets jump height (from ground)
+//   Spider — tap to teleport to the opposite surface (edge-triggered)
+//   Swing  — tap to flip thrust direction (edge-triggered, continuous)
+enum class GameMode { Cube, Ship, Ball, UFO, Wave, Robot, Spider, Swing, Unknown };
+
+// The decision an algorithm makes for a single physics step. Classic modes only
+// need the jump button; the same bit drives every mode (see GameMode).
 struct InputState {
     bool hold = false; // whether the jump button should be held this step
 };
@@ -31,6 +43,7 @@ struct StepContext {
     bool onGround = false;
     bool upsideDown = false;
     bool isShip = false;
+    GameMode mode = GameMode::Cube;
 
     PlayerObject* player = nullptr;
     GJBaseGameLayer* gameLayer = nullptr;

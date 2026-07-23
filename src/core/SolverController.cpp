@@ -2,6 +2,7 @@
 
 #include "AlgorithmRegistry.hpp"
 #include "SolutionStore.hpp"
+#include "Perception.hpp"
 #include "../algorithms/Builtins.hpp"
 #include "../algorithms/ReplayAlgorithm.hpp"
 
@@ -27,6 +28,32 @@ static double elapsedMs(std::chrono::steady_clock::time_point start) {
     return std::chrono::duration<double, std::milli>(
                std::chrono::steady_clock::now() - start)
         .count();
+}
+
+static GameMode modeOf(PlayerObject* p) {
+    if (!p) return GameMode::Cube;
+    if (p->m_isSwing) return GameMode::Swing;
+    if (p->m_isSpider) return GameMode::Spider;
+    if (p->m_isRobot) return GameMode::Robot;
+    if (p->m_isBall) return GameMode::Ball;
+    if (p->m_isBird) return GameMode::UFO;
+    if (p->m_isDart) return GameMode::Wave;
+    if (p->m_isShip) return GameMode::Ship;
+    return GameMode::Cube;
+}
+
+static const char* modeName(GameMode m) {
+    switch (m) {
+        case GameMode::Ship: return "ship";
+        case GameMode::Ball: return "ball";
+        case GameMode::UFO: return "ufo";
+        case GameMode::Wave: return "wave";
+        case GameMode::Robot: return "robot";
+        case GameMode::Spider: return "spider";
+        case GameMode::Swing: return "swing";
+        case GameMode::Cube: return "cube";
+        default: return "?";
+    }
 }
 
 void SolverController::applySpeed() {
@@ -66,6 +93,9 @@ void SolverController::onLevelStart(PlayLayer* pl) {
     m_level.name = std::string(pl->m_level->m_levelName);
     m_level.length = pl->m_levelLength;
     m_maxAttempts = static_cast<int>(Mod::get()->getSettingValue<int64_t>("max-attempts"));
+    m_showSensing = Mod::get()->getSettingValue<bool>("show-sensing");
+    m_lastHazardDist = -1.f;
+    m_lastMode = GameMode::Cube;
 
     if (auto saved = SolutionStore::load(m_algoId, m_level.levelID)) {
         m_mode = Mode::Replay;
@@ -144,9 +174,17 @@ void SolverController::onStep(GJBaseGameLayer* gl) {
     ctx.onGround = player->m_isOnGround;
     ctx.upsideDown = player->m_isUpsideDown;
     ctx.isShip = player->m_isShip;
+    ctx.mode = modeOf(player);
+    m_lastMode = ctx.mode;
     ctx.progress = (gl->m_levelLength > 0.f)
         ? std::clamp(ctx.playerX / gl->m_levelLength, 0.f, 1.f)
         : 0.f;
+
+    // Debug perception overlay (does not influence the algorithm).
+    if (m_showSensing) {
+        auto s = sense(gl, player, 300.f, 90.f);
+        m_lastHazardDist = s.hazardAhead ? s.hazardDistance : -1.f;
+    }
 
     if (ctx.progress > m_bestProgress) m_bestProgress = ctx.progress;
     if (ctx.progress > m_bestEver) m_bestEver = ctx.progress;
@@ -255,11 +293,18 @@ bool SolverController::reachedAttemptLimit() const {
 
 std::string SolverController::hudText() const {
     if (!m_active && !m_solved) return "";
-    std::string mode = (m_mode == Mode::Replay) ? std::string("replay")
-                                                : (m_algo ? m_algo->name() : std::string("-"));
+    std::string algo = (m_mode == Mode::Replay) ? std::string("replay")
+                                                 : (m_algo ? m_algo->name() : std::string("-"));
     std::string status = m_solved ? "\nSOLVED" : (m_active ? "" : "\nSTOPPED");
-    return fmt::format("dashback [{}]  {:.1f}x\nAttempt: {}\nNow: {:.1f}%  Best: {:.1f}%{}",
-        mode, m_speed, m_attempt, m_bestProgress * 100.f, m_bestEver * 100.f, status);
+    std::string text = fmt::format("dashback [{}]  {:.1f}x\nMode: {}\nAttempt: {}\nNow: {:.1f}%  Best: {:.1f}%{}",
+        algo, m_speed, modeName(m_lastMode), m_attempt,
+        m_bestProgress * 100.f, m_bestEver * 100.f, status);
+    if (m_showSensing) {
+        text += (m_lastHazardDist >= 0.f)
+            ? fmt::format("\nHazard: {:.0f}", m_lastHazardDist)
+            : std::string("\nHazard: none");
+    }
+    return text;
 }
 
 } // namespace dashback

@@ -23,7 +23,7 @@
 		},
 		"algorithm": {
 			"name": "Algorithm",
-			"description": "Which solver to run. One of: backtracking, random, genetic.",
+			"description": "Which solver to run: backtracking, genetic, hillclimb, annealing, or random.",
 			"type": "string",
 			"default": "backtracking"
 		},
@@ -57,6 +57,44 @@
 			"default": 60,
 			"min": 1,
 			"max": 240
+		},
+		"population-size": {
+			"name": "Population Size (genetic)",
+			"description": "Genomes per generation for the genetic algorithm.",
+			"type": "int",
+			"default": 30,
+			"min": 4,
+			"max": 300
+		},
+		"mutation-rate": {
+			"name": "Mutation Rate (genetic/hillclimb)",
+			"description": "Probability a frame's hold bit flips within the mutation window.",
+			"type": "float",
+			"default": 0.08,
+			"min": 0.0,
+			"max": 1.0
+		},
+		"mutation-window": {
+			"name": "Mutation Window (genetic/hillclimb)",
+			"description": "How many frames around the death point mutations focus on. Larger explores more but slower to refine.",
+			"type": "int",
+			"default": 80,
+			"min": 1,
+			"max": 4000
+		},
+		"annealing-temperature": {
+			"name": "Annealing Temperature",
+			"description": "Initial temperature for the annealing algorithm (in frames). Higher = more willing to accept worse candidates early. Cools automatically.",
+			"type": "float",
+			"default": 400.0,
+			"min": 1.0,
+			"max": 5000.0
+		},
+		"show-sensing": {
+			"name": "Show Obstacle Sensing (debug)",
+			"description": "Overlay the sensed distance to the next hazard on the HUD, to validate the perception module. Does not affect solving.",
+			"type": "bool",
+			"default": false
 		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",

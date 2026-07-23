@@ -8,101 +8,75 @@
 namespace dashback {
 
 void GeneticAlgorithm::onLevelStart(const LevelInfo& /*level*/) {
+    m_popSize = std::max(4, static_cast<int>(
+        geode::Mod::get()->getSettingValue<int64_t>("population-size")));
+    m_mutationRate = geode::Mod::get()->getSettingValue<double>("mutation-rate");
+    m_mutationWindow = std::max(1, static_cast<int>(
+        geode::Mod::get()->getSettingValue<int64_t>("mutation-window")));
+    m_eliteCount = std::clamp(m_popSize / 6, 1, m_popSize - 1);
+
     m_rng.seed(1337);
-    m_population.assign(kPopulationSize, Genome{});
-    m_fitness.assign(kPopulationSize, 0.f);
+    m_pop.assign(m_popSize, seq::Genome{});
+    m_fitness.assign(m_popSize, 0);
+    m_best.clear();
+    m_bestFit = -1;
     m_current = 0;
     m_generation = 0;
 }
 
-void GeneticAlgorithm::onAttemptStart(int /*attempt*/) {
-    m_bit = 0;
-}
-
-InputState GeneticAlgorithm::decide(const StepContext& /*ctx*/) {
-    Genome& g = m_population[static_cast<std::size_t>(m_current)];
-    // Genomes grow lazily as an attempt progresses further than any before it;
-    // the grown bits become heritable material for crossover.
-    if (m_bit >= g.size()) {
-        std::bernoulli_distribution tap(0.08);
-        g.push_back(tap(m_rng));
+InputState GeneticAlgorithm::decide(const StepContext& ctx) {
+    auto& g = m_pop[m_current];
+    int f = ctx.frame;
+    if (f >= static_cast<int>(g.size())) {
+        std::bernoulli_distribution hold(m_holdProb);
+        while (static_cast<int>(g.size()) <= f) g.push_back(hold(m_rng));
     }
-    bool hold = g[m_bit];
-    ++m_bit;
-    return {hold};
+    return {g[static_cast<std::size_t>(f)]};
 }
 
 void GeneticAlgorithm::onDeath(const DeathInfo& info) {
-    recordFitness(info.progress);
+    m_fitness[m_current] = info.frame;
+    if (info.frame > m_bestFit) {
+        m_bestFit = info.frame;
+        m_best = m_pop[m_current];
+    }
+    if (++m_current >= m_popSize) evolve();
 }
 
 void GeneticAlgorithm::onComplete(const AttemptResult& /*result*/) {
-    recordFitness(1.0f);
+    m_best = m_pop[m_current]; // the genome that finished the level
 }
 
-void GeneticAlgorithm::recordFitness(float progress) {
-    if (m_current < 0 || m_current >= kPopulationSize) return;
-    m_fitness[static_cast<std::size_t>(m_current)] = progress;
-    ++m_current;
-    evolveIfGenerationComplete();
+const seq::Genome& GeneticAlgorithm::tournament() {
+    std::uniform_int_distribution<int> pick(0, m_popSize - 1);
+    int a = pick(m_rng), b = pick(m_rng);
+    return (m_fitness[a] >= m_fitness[b]) ? m_pop[a] : m_pop[b];
 }
 
-void GeneticAlgorithm::evolveIfGenerationComplete() {
-    if (m_current < kPopulationSize) return;
-
-    // Rank genomes by fitness (best first).
-    std::vector<int> order(kPopulationSize);
+void GeneticAlgorithm::evolve() {
+    std::vector<int> order(m_popSize);
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(),
         [&](int a, int b) { return m_fitness[a] > m_fitness[b]; });
 
-    float bestFitness = m_fitness[order.front()];
+    std::vector<seq::Genome> next;
+    next.reserve(m_popSize);
+    for (int e = 0; e < m_eliteCount; ++e) next.push_back(m_pop[order[e]]);
 
-    std::vector<Genome> next;
-    next.reserve(kPopulationSize);
-
-    // Elitism: carry the best genomes forward unchanged.
-    for (int e = 0; e < kEliteCount; ++e) {
-        next.push_back(m_population[static_cast<std::size_t>(order[e])]);
-    }
-
-    auto tournament = [&]() -> const Genome& {
-        std::uniform_int_distribution<int> pick(0, kPopulationSize - 1);
-        int a = pick(m_rng), b = pick(m_rng);
-        return (m_fitness[a] >= m_fitness[b])
-            ? m_population[static_cast<std::size_t>(a)]
-            : m_population[static_cast<std::size_t>(b)];
-    };
-
-    std::bernoulli_distribution mutate(kMutationRate);
-    std::bernoulli_distribution coin(0.5);
-
-    while (static_cast<int>(next.size()) < kPopulationSize) {
-        const Genome& p1 = tournament();
-        const Genome& p2 = tournament();
-        std::size_t len = std::max(p1.size(), p2.size());
-        std::size_t cut = (len > 0)
-            ? std::uniform_int_distribution<std::size_t>(0, len)(m_rng)
-            : 0;
-
-        Genome child;
-        child.reserve(len);
-        for (std::size_t i = 0; i < len; ++i) {
-            const Genome& src = (i < cut) ? p1 : p2;
-            bool bit = (i < src.size()) ? src[i] : coin(m_rng);
-            if (mutate(m_rng)) bit = !bit;
-            child.push_back(bit);
-        }
+    while (static_cast<int>(next.size()) < m_popSize) {
+        seq::Genome child = seq::crossover(tournament(), tournament(), m_rng);
+        // Death-focused mutation at the current frontier (where the population
+        // is collectively stuck).
+        seq::mutateAround(child, m_bestFit, m_mutationWindow, m_mutationRate, m_holdProb, m_rng);
         next.push_back(std::move(child));
     }
 
-    m_population = std::move(next);
-    m_fitness.assign(kPopulationSize, 0.f);
+    m_pop = std::move(next);
+    m_fitness.assign(m_popSize, 0);
     m_current = 0;
     ++m_generation;
-
-    geode::log::info("dashback[genetic]: generation {} done, best fitness {:.1f}%",
-        m_generation, bestFitness * 100.f);
+    geode::log::info("dashback[genetic]: generation {} done, frontier frame {}",
+        m_generation, m_bestFit);
 }
 
 } // namespace dashback

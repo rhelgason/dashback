@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0
+- New algorithms: **genetic** (population of hold-sequences, tournament +
+  crossover + death-focused mutation), **hillclimb** ((1+1) local search), and
+  **annealing** (hill-climb that accepts worse candidates with a cooling
+  probability). Select via the Algorithm setting.
+- Game-mode detection: cube/ship/ball/UFO/wave/robot/spider/swing, shown on the
+  HUD. The per-frame hold representation is already correct for every mode; the
+  mode is exposed for awareness and future mode-biased search.
+- Obstacle-sensing foundation (`Perception`) built on GD's damagingObjectsInRect
+  / staticObjectsInRect, with a "Show Obstacle Sensing" debug HUD toggle to
+  validate it. Not used by the search algorithms (staged for future reactive/RL
+  work); computed on demand so it costs nothing otherwise.
+- Settings for population size, mutation rate, mutation window, and annealing
+  temperature.
+
 ## 1.0.8
 - Backtracking now searches over variable-length HOLD intervals instead of
   single-frame taps, so it can express sustained input (flight/ship sections,

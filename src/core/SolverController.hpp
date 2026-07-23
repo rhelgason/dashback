@@ -74,6 +74,10 @@ private:
     float m_speed = 1.f;
     long long m_sessionId = 0;
 
+    bool m_showSensing = false;    // debug: overlay sensed hazard distance on HUD
+    float m_lastHazardDist = -1.f; // last sensed distance to a hazard ahead
+    GameMode m_lastMode = GameMode::Cube;
+
     std::chrono::steady_clock::time_point m_attemptStart;
 };
 

@@ -3,6 +3,7 @@
 #include "../core/AlgorithmRegistry.hpp"
 #include "BacktrackingAlgorithm.hpp"
 #include "GeneticAlgorithm.hpp"
+#include "HillClimbingAlgorithm.hpp"
 #include "RandomSearchAlgorithm.hpp"
 
 #include <memory>
@@ -18,6 +19,8 @@ void registerBuiltinAlgorithms() {
     registry.reg("backtracking", [] { return std::make_unique<BacktrackingAlgorithm>(); });
     registry.reg("random", [] { return std::make_unique<RandomSearchAlgorithm>(); });
     registry.reg("genetic", [] { return std::make_unique<GeneticAlgorithm>(); });
+    registry.reg("hillclimb", [] { return std::make_unique<HillClimbingAlgorithm>(false); });
+    registry.reg("annealing", [] { return std::make_unique<HillClimbingAlgorithm>(true); });
 }
 
 } // namespace dashback
