@@ -53,15 +53,6 @@ public:
     // The full per-frame input sequence the algorithm currently believes in.
     // Persisted verbatim when a level is completed so it can be replayed E2E.
     virtual std::vector<bool> solution() const { return {}; }
-
-    // Checkpoint support (search acceleration). `frontierFrame` is the frame up
-    // to which the input sequence is final and stable — safe to snapshot state
-    // at. `nextChangeFrame` is the earliest frame the *next* attempt might differ
-    // from that stable prefix; if it is >= the checkpoint frame, the controller
-    // can restart from the checkpoint instead of from frame 0. Algorithms that
-    // rewrite their whole sequence each attempt leave these at 0 (no benefit).
-    virtual int frontierFrame() const { return 0; }
-    virtual int nextChangeFrame() const { return 0; }
 };
 
 } // namespace dashback

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.7
+- True depth-first backtracking with undo: keeps a stack of committed jump
+  decisions and, when a branch dead-ends, pops the last jump and tries a
+  different one for that slot — instead of greedily locking in the first
+  progress-extending jump and wedging. Much more robust on obstacles where the
+  death happens well after the actual mistake.
+
 ## 1.0.6
 - Remove checkpoint fast-restart. GD's loadFromCheckpoint is a practice-mode
   facility; used standalone it either failed to restore (replayed from frame 0)
