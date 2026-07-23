@@ -44,11 +44,19 @@
 		},
 		"search-granularity": {
 			"name": "Search Granularity",
-			"description": "How many frames the backtracking probe steps at a time. 1 = every frame (fully deterministic / complete). Higher scans faster but can miss frame-perfect jumps.",
+			"description": "Frames the backtracking search steps by, for both hold start and hold length. 1 = every frame (fully complete). Higher scans faster but can miss frame-perfect inputs.",
 			"type": "int",
 			"default": 1,
 			"min": 1,
 			"max": 8
+		},
+		"max-hold-length": {
+			"name": "Max Hold Length",
+			"description": "Longest single held input (frames) the backtracking search will try. Flight/ship sections need sustained holds, so this must be well above 1; longer thrusts are built from chained holds. Larger values enlarge the search.",
+			"type": "int",
+			"default": 60,
+			"min": 1,
+			"max": 240
 		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",

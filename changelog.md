@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.8
+- Backtracking now searches over variable-length HOLD intervals instead of
+  single-frame taps, so it can express sustained input (flight/ship sections,
+  held/consecutive jumps) — not just isolated taps. Still pure backtracking:
+  systematic length-major enumeration with branch-and-bound pruning and undo, no
+  game-state heuristics or mode-awareness. New "Max Hold Length" setting bounds a
+  single held input; "Search Granularity" now steps both hold start and length.
+
 ## 1.0.7
 - True depth-first backtracking with undo: keeps a stack of committed jump
   decisions and, when a branch dead-ends, pops the last jump and tries a
