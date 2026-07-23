@@ -50,6 +50,12 @@
 			"min": 1,
 			"max": 8
 		},
+		"fast-restart": {
+			"name": "Fast Restart (checkpoints)",
+			"description": "Experimental: restart from a saved checkpoint near the current frontier instead of from the level start, so each attempt only replays the segment to the next obstacle. Huge speedup deep in a level. Turn off if solving behaves oddly.",
+			"type": "bool",
+			"default": true
+		},
 		"auto-solve-daily": {
 			"name": "Auto-solve Daily (experimental)",
 			"description": "Attempt to automatically open and solve the Daily level. Not yet fully implemented.",

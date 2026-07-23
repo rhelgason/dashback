@@ -22,11 +22,10 @@ void BacktrackingAlgorithm::onDeath(const DeathInfo& info) {
     int death = info.frame;
 
     if (m_probe < 0) {
-        // First death: nothing committed yet. Start probing just before the point
-        // where we died.
+        // First death: nothing committed yet. Start probing just before it.
         m_bestDeath = death;
         m_probe = death - 1;
-        if (m_probe < 0) m_exhausted = true;
+        if (m_probe <= m_lastCommitted) m_exhausted = true;
         return;
     }
 
@@ -36,15 +35,18 @@ void BacktrackingAlgorithm::onDeath(const DeathInfo& info) {
             m_committed.resize(m_probe + 1, false);
         }
         m_committed[m_probe] = true;
+        m_lastCommitted = m_probe; // frontier advances
         m_bestDeath = death;
-        m_probe = death - 1; // now probe near the new death point
+        m_probe = death - 1; // probe near the new death point
     } else {
-        // Trial jump didn't help; try inserting a jump earlier (step by the
-        // configured granularity).
+        // Trial jump didn't help; try inserting a jump earlier.
         m_probe -= m_granularity;
     }
 
-    if (m_probe < 0) m_exhausted = true; // ran out of frames to probe
+    // Never probe into already-committed territory: everything up to the last
+    // committed jump is final. If we've run out of room, this obstacle can't be
+    // cleared by a single extra jump (greedy limitation) — stop.
+    if (m_probe <= m_lastCommitted) m_exhausted = true;
 }
 
 } // namespace dashback

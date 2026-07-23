@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.4
+- Checkpoint fast-restart (setting "Fast Restart", default on): during search,
+  snapshot state at the committed frontier and restart there instead of from
+  frame 0, so each attempt only replays to the next obstacle. Removes the
+  linear per-attempt slowdown deep in a level.
+- Solution storage + end-to-end replay: when an algorithm completes a level, its
+  full frame-0 input sequence is saved (per algorithm + level). Reopening the
+  level replays that sequence start-to-finish at watchable speed — a genuine E2E
+  run. If a stored solution ever fails to complete, it's discarded and re-searched.
+- Live speed control: `]` faster, `[` slower (0.5x–12x), shown on the HUD.
+
 ## 1.0.3
 - Add "Solve Speed" setting (default 4x): speeds up iteration via the scheduler
   time scale. Physics is fixed-step so this doesn't affect determinism. Reset to

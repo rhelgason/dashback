@@ -10,24 +10,19 @@
 
 class PlayLayer;
 class GJBaseGameLayer;
+class CheckpointObject;
 
 namespace dashback {
 
-// The orchestrator. A single instance owns the currently-selected algorithm and
-// the metrics recorder, and it is driven by the game hooks:
+// The orchestrator. Owns the current algorithm + metrics and is driven by the
+// game hooks. It runs in one of two modes:
 //
-//   PlayLayer::init          -> onLevelStart   (pick algorithm, start attempt 1)
-//   GJBaseGameLayer::         -> onStep         (deterministic frame + input)
-//     processCommands
-//   PlayLayer::destroyPlayer -> onDeath         (record, learn, schedule reset)
-//   PlayLayer::resetLevel    -> onAttemptStart  (next attempt)
-//   PlayLayer::levelComplete -> onComplete      (record success, stop)
-//   PlayLayer::onExit        -> onLevelEnd      (tear down)
-//
-// The key correctness idea: `onStep` runs from processCommands, which the game
-// calls exactly once per fixed physics step (240/s), NOT once per rendered
-// frame. Counting those calls gives a frame index that is identical across
-// attempts regardless of framerate — the root fix for the old replay flakiness.
+//   Search  — run the selected algorithm to find an input sequence. Optionally
+//             uses GD checkpoints to restart near the frontier instead of from
+//             frame 0 (fast-restart). On completion the full sequence is saved.
+//   Replay  — a level with a saved solution plays that sequence from frame 0 at
+//             watchable speed: a genuine end-to-end run. If it fails to complete,
+//             the stored solution is discarded and the controller re-searches.
 class SolverController {
 public:
     static SolverController& get();
@@ -40,34 +35,51 @@ public:
     void onLevelEnd();
 
     bool active() const { return m_active; }
+    bool inLevel() const { return m_playLayer != nullptr; }
 
-    // Text for the on-screen HUD, refreshed by PlayLayer::postUpdate.
+    // Live game-speed control (bound to keys). delta is added to the multiplier.
+    void adjustSpeed(float delta);
+
     std::string hudText() const;
 
 private:
+    enum class Mode { Search, Replay };
+
     SolverController() = default;
 
-    void beginAttempt();
+    void beginAttempt(int startFrame);
+    void scheduleRestart();       // search mode: checkpoint restore or full reset
+    void startSearch();           // (re)initialize a from-scratch search
+    void applySpeed();
     bool reachedAttemptLimit() const;
 
     std::unique_ptr<Algorithm> m_algo;
     MetricsRecorder m_metrics;
     LevelInfo m_level;
+    std::string m_algoId;
 
     PlayLayer* m_playLayer = nullptr;
 
-    bool m_active = false;          // solver enabled and running for this level
-    bool m_awaitingFirstStep = false; // debounces duplicate resetLevel() calls
-    bool m_deadThisAttempt = false;   // dedupes p1/p2 destroyPlayer calls
+    Mode m_mode = Mode::Search;
+    bool m_active = false;
+    bool m_awaitingFirstStep = false;
+    bool m_awaitingCheckpointStart = false; // ignore the resetLevel hook during a checkpoint restore
+    bool m_deadThisAttempt = false;
     bool m_solved = false;
+    bool m_fastRestart = false;
 
-    int m_attempt = 0;             // 1-based attempt counter
-    int m_frame = 0;               // deterministic physics-step index
-    int m_maxAttempts = 0;         // 0 = unlimited
-    float m_bestProgress = 0.f;    // best progress this attempt (0..1)
-    float m_bestEver = 0.f;        // best progress across all attempts this level
-    bool m_lastHold = false;       // last applied jump state (edge detection)
+    int m_attempt = 0;
+    int m_frame = 0;
+    int m_maxAttempts = 0;
+    float m_bestProgress = 0.f;
+    float m_bestEver = 0.f;
+    bool m_lastHold = false;
 
+    // Checkpoint state (search + fast-restart).
+    CheckpointObject* m_checkpoint = nullptr;
+    int m_checkpointFrame = -1;
+
+    float m_speed = 1.f;
     long long m_sessionId = 0;
 
     std::chrono::steady_clock::time_point m_attemptStart;
